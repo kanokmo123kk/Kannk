@@ -1,0 +1,71 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local gui = script.Parent
+local button = gui:WaitForChild("LockButton")
+
+local lockOn = false
+local target = nil
+
+-- หาเป้าหมาย
+local function getNearestTarget()
+	local nearest = nil
+	local shortest = 180
+
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("Model") and obj ~= player.Character then
+			local hum = obj:FindFirstChild("Humanoid")
+			local root = obj:FindFirstChild("HumanoidRootPart")
+
+			if hum and root and hum.Health > 0 then
+				local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
+
+				if onScreen then
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) -
+						Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
+
+					if dist < shortest then
+						shortest = dist
+						nearest = root
+					end
+				end
+			end
+		end
+	end
+
+	return nearest
+end
+
+-- กดปุ่ม = สลับ ON/OFF
+button.MouseButton1Click:Connect(function()
+	lockOn = not lockOn
+
+	if lockOn then
+		target = getNearestTarget()
+		button.Text = "ON"
+	else
+		target = nil
+		button.Text = "LOCK"
+	end
+end)
+
+-- กล้องล็อก
+RunService.RenderStepped:Connect(function()
+	if lockOn and target then
+		if not target.Parent then
+			lockOn = false
+			target = nil
+			button.Text = "LOCK"
+			return
+		end
+
+		local camPos = camera.CFrame.Position
+		camera.CFrame = camera.CFrame:Lerp(
+			CFrame.new(camPos, target.Position),
+			0.25
+		)
+	end
+end)
